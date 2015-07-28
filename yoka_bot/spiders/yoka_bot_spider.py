@@ -77,23 +77,24 @@ class YokaBotSpider(scrapy.Spider):
     def parse_product_list_page(self, response):
         url = response.url
         page = int(re.search(r'p=(\d+)', url).group(1))
-        while 1:
-            tree = etree.HTML(response.body_as_unicode())
-            nodes = tree.xpath("//div[@class='mask']/dl")
-            if not nodes:
-                break
-            for node in nodes:
-                product_url = wrap_full_url(node.xpath(".//dt/a/@href")[0])
-                yield YokaBotProductListItem(**{
-                    'item_name': 'YokaBotProductListItem',
-                    'url': url,
-                    'page': page,
-                    'product_url': product_url,
-                    'img': node.xpath(".//dt/a/img/@src")[0],
-                    'title': node.xpath(".//dt/a/img/@alt")[0],
-                })
-                yield scrapy.Request(product_url, callback=self.parse_product_page)
-            url = re.sub(r'p=(\d+)', r'p=%s' % (page + 1), url, re.S)
+
+        tree = etree.HTML(response.body_as_unicode())
+        nodes = tree.xpath("//div[@class='mask']/dl")
+        # force_break = False
+        for node in nodes:
+            product_url = wrap_full_url(node.xpath(".//dt/a/@href")[0])
+            yield YokaBotProductListItem(**{
+                'item_name': 'YokaBotProductListItem',
+                'url': url,
+                'page': page,
+                'product_url': product_url,
+                'img': node.xpath(".//dt/a/img/@src")[0],
+                'title': node.xpath(".//dt/a/img/@alt")[0],
+            })
+            yield scrapy.Request(product_url, callback=self.parse_product_page)
+        if nodes:
+            page += 1
+            url = re.sub(r'p=(\d+)', r'p=%s' % page, url, re.S)
             yield scrapy.Request(url, callback=self.parse_product_list_page)
 
     def parse_product_page(self, response):
